@@ -57,7 +57,7 @@ public class Server {
   public void handle() {
     ServerSocket serverSocket;
     //Creating a thread Pool which contains 5 threads
-    ExecutorService threadpool = Executors.newFixedThreadPool(1);
+    ExecutorService threadpool = Executors.newFixedThreadPool(2);
     try {
       System.out.println("[Server] Waiting for connection......");
       serverSocket = new ServerSocket((port));
