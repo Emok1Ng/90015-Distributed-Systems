@@ -9,7 +9,6 @@ import java.net.Socket;
 public class Client2 {
 
     public static void main(String[] args)throws IOException {
-
         client_connection();
     }
     static void client_connection() throws IOException {
