@@ -18,9 +18,17 @@ public class Client {
     PrintWriter writer = new PrintWriter(socket.getOutputStream(),true);
     BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
     BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in));
+    InputParser ip = new InputParser();
     while (true) {
       String message = keyboard.readLine();
-      writer.println(message);
+      String toSend = ip.toJSON(message);
+      if(toSend != null){
+        writer.println(toSend);
+      }
+      else{
+        System.out.println("[ERROR]Unable to send message due to Invalid Command or Lack of arguments.");
+        continue;
+      }
       if (message.equals("quit")) break;
       String response = reader.readLine();
       System.out.format("[Server]> %s\n", response);
