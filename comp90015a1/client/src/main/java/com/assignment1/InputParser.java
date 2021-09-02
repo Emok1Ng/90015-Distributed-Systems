@@ -58,9 +58,11 @@ public class InputParser {
             d.setRoomid(arg1);
             return JSON.toJSONString(d);
         }
-        else if(command.equals(Command.WHO.getCommand())){
+        else if(command.equals(Command.WHO.getCommand()) && parts.length >= 2){
+            arg1 = parts[1];
             Who w = new Who();
             w.setType(Command.WHO.getCommand());
+            w.setRoomid(arg1);
             return JSON.toJSONString(w);
         }
         else if(command.equals(Command.QUIT.getCommand())){
