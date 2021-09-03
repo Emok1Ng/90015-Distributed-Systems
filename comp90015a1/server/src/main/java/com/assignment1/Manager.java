@@ -4,15 +4,17 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.assignment1.base.Enum.Command;
 import com.assignment1.base.Enum.MessageType;
+import com.assignment1.base.Message.C2S.IdentityChange;
 import com.assignment1.base.Message.S2C.NewIdentity;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.regex.Pattern;
 
 public class Manager {
 
     private ArrayList<ChatRoom> roomList;
-    private ArrayList<Guest> guestList;
+    private ArrayList<String> identityList;
     private HashMap<Server.ChatConnection, Guest> guestHashMap;
     private HashMap<Guest, Server.ChatConnection> connectionHashMap;
     private HashMap<String, ChatRoom> roomHashMap;
@@ -22,7 +24,7 @@ public class Manager {
         this.roomList = new ArrayList<>();
         ChatRoom hall = new ChatRoom("MainHall");
         this.roomList.add(hall);
-        this.guestList = new ArrayList<>();
+        this.identityList = new ArrayList<>();
         this.guestHashMap = new HashMap<>();
         this.connectionHashMap = new HashMap<>();
         this.roomHashMap = new HashMap<>();
@@ -74,12 +76,13 @@ public class Manager {
     }
 
     private synchronized BroadcastInfo NewIdentity(Guest g, Server.ChatConnection connection){
-        g.setIdentity("guest-" + this.count.toString());
+        g.setIdentity("guest" + this.count.toString());
         this.count += 1;
         g.setCurrentRoom("MainHall");
         this.roomHashMap.get("MainHall").addMember(g);
         this.connectionHashMap.put(g, connection);
         this.guestHashMap.put(connection, g);
+        this.identityList.add(g.getIdentity());
         NewIdentity ni = new NewIdentity();
         ni.setType(MessageType.NEWIDENTITY.getType());
         ni.setFormer("");
@@ -91,7 +94,27 @@ public class Manager {
     }
 
     private synchronized BroadcastInfo IdentityChange(String identity, Guest g){
-        return null;
+        String pattern = "[a-zA-Z0-9]{3,16}";
+        String defaultPattern = "guest[0-9]{0,11}";
+        NewIdentity ni = new NewIdentity();
+        ni.setType(MessageType.NEWIDENTITY.getType());
+        ni.setFormer(g.getIdentity());
+        if(Pattern.matches(pattern, identity) &&
+                !Pattern.matches(defaultPattern, identity) &&
+                !this.identityList.contains(identity)){
+            g.setIdentity(identity);
+            ni.setIdentity(identity);
+        }
+        else{
+            ni.setIdentity(g.getIdentity());
+        }
+        BroadcastInfo info = new BroadcastInfo();
+        info.setContent(JSON.toJSONString(ni));
+        ArrayList<Guest> guestsToSend = this.roomHashMap.get(g.getCurrentRoom()).getMembers();
+        for(int i=0;i<guestsToSend.size();i++){
+            info.addConnection(this.connectionHashMap.get(guestsToSend.get(i)));
+        }
+        return info;
     }
 
     private synchronized BroadcastInfo Join(String roomid, Guest g){
