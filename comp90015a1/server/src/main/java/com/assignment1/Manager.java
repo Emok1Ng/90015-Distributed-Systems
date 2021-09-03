@@ -17,6 +17,7 @@ import com.assignment1.base.Message.S2C.RoomList;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 public class Manager {
@@ -135,11 +136,9 @@ public class Manager {
         //已经在要加入的房间或者加入的房间在roomlist里不存在
         if(g.getCurrentRoom().equals(roomid)|| !this.roomHashMap.containsKey(roomid)){
             //啥也不变
-
             roomchange.setRoomid(g.getCurrentRoom());
-            //只对guest 本人发失败消息
-            String fail ="The requested room is invalid or non existent.";
-            info.setContent(JSON.toJSONString(fail));
+            info.setContent(JSON.toJSONString(roomchange));
+            //只对当前用户发送RoomChange Message
             info.addConnection(this.connectionHashMap.get(g));
         }
         else{
@@ -149,7 +148,7 @@ public class Manager {
             g.setCurrentRoom(roomid);
             roomchange.setRoomid(roomid);
             info.setContent(JSON.toJSONString(roomchange));
-            //对目标房间内的人发送
+            //对目标房间内的人发送声明有人加入
             ArrayList<Guest> guestsToSend = this.roomHashMap.get(roomid).getMembers();
             for(int i=0; i< guestsToSend.size();i++){
                 info.addConnection(this.connectionHashMap.get(guestsToSend.get(i)));
@@ -169,6 +168,7 @@ public class Manager {
         RoomChange createRoom = new RoomChange();
         createRoom.setType(Command.CREATEROOM.getCommand());
         createRoom.setRoomid(roomid);
+
         //如果房间名符合要求且不存在
         if(Pattern.matches(pattern, roomid)&&!this.roomHashMap.containsKey(roomid)){
             ChatRoom newRoom = new ChatRoom(roomid);
@@ -177,12 +177,12 @@ public class Manager {
             this.roomList.add(newRoom);
             this.roomHashMap.put(roomid, newRoom);
             info.setContent(JSON.toJSONString(createRoom));
+            info.addConnection(this.connectionHashMap.get(g));
         }
         else {
-            String fail = "Room "+roomid+" is invalid or already in use";
-            info.setContent(JSON.toJSONString(fail));
+            info.setContent(JSON.toJSONString(createRoom));
         }
-        info.addConnection(this.connectionHashMap.get(g));
+
         return info;
     }
 
@@ -197,11 +197,10 @@ public class Manager {
             this.roomList.remove(this.roomHashMap.get(roomid));
             this.roomHashMap.remove(roomid);
             info.setContent(JSON.toJSONString(deleteRoom));
+            info.addConnection(this.connectionHashMap.get(g));
         }
         else{
-            String fail = "Room is not exist or you don't have authorization.";
-            info.setContent(JSON.toJSONString(fail));
-
+            info.setContent(JSON.toJSONString(deleteRoom));
         }
         return info;
     }
@@ -214,14 +213,15 @@ public class Manager {
         who.setRoomid(roomid);
         ArrayList<Guest> guestsInRoom = this.roomHashMap.get(g.getCurrentRoom()).getMembers();
         ArrayList<String> guestsIdentity = new ArrayList<>();
-        //把房间里的guest identity存入 一个string arraylist 然后放入who.setIdentities().
+        //把房间里的所有client identity存入 一个string arraylist 然后放入who.setIdentities().
         for(int i =0; i < guestsInRoom.size();i++){
             guestsIdentity.add(guestsInRoom.get(i).getIdentity());
         }
         who.setIdentities(guestsIdentity);
         who.setOwner(this.roomHashMap.get(roomid).getOwner().getIdentity());
         info.setContent(JSON.toJSONString(who));
-
+        info.addConnection(this.connectionHashMap.get(g));
+        //如果房间为mainhall, owner应为空 ++
         return info;
     }
 
@@ -229,15 +229,27 @@ public class Manager {
         BroadcastInfo info = new BroadcastInfo();
         RoomChange quit = new RoomChange();
         quit.setType(Command.QUIT.getCommand());
-        String announcement = g.getIdentity()+ "left the server.";
+        info.setContent(JSON.toJSONString(quit));
+
         ArrayList<Guest> guestsToSend = this.roomHashMap.get(g.getCurrentRoom()).getMembers();
-        info.setContent(announcement);
+
+
+        //如果退出的用户创建过房间，找到并删除
+        for(String roomid: this.roomHashMap.keySet()){
+            if(g.equals(this.roomHashMap.get(roomid).getOwner())){
+                this.roomList.remove(this.roomHashMap.get(roomid));
+                this.roomHashMap.remove(roomid);
+            }
+            this.identityList.remove(g.getIdentity());
+            this.connectionHashMap.remove(g);
+            this.guestHashMap.remove(g);
+
         for(int i =0; i<guestsToSend.size(); i++){
             info.addConnection(this.connectionHashMap.get(guestsToSend.get(i)));
         }
 
-        this.connectionHashMap.remove(g);
-        this.identityList.remove(g.getIdentity());
+        }
+
         return info;
     }
 
