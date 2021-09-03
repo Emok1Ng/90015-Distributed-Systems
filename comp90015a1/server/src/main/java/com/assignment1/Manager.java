@@ -4,21 +4,16 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.assignment1.base.Enum.Command;
 import com.assignment1.base.Enum.MessageType;
-import com.assignment1.base.Message.C2S.IdentityChange;
 import com.assignment1.base.Message.S2C.NewIdentity;
 import com.assignment1.base.Message.S2C.RoomChange;
 
 
-import com.assignment1.base.Message.S2C.NewIdentity;
-import com.assignment1.base.Message.S2C.RoomChange;
 import com.assignment1.base.Message.S2C.RoomContents;
 import com.assignment1.base.Message.S2C.RoomList;
 
 
-import java.awt.image.AreaAveragingScaleFilter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 public class Manager {
@@ -32,7 +27,7 @@ public class Manager {
 
     public Manager() {
         this.roomList = new ArrayList<>();
-        ChatRoom hall = new ChatRoom("MainHall");
+        ChatRoom hall = new ChatRoom("MainHall", null);
         this.roomList.add(hall);
         this.identityList = new ArrayList<>();
         this.guestHashMap = new HashMap<>();

@@ -9,7 +9,6 @@ public class Guest {
     private ArrayList<String> ownership;
 
     public Guest() {
-        this.identity = identity;
         this.ownership = new ArrayList<>();
     }
 

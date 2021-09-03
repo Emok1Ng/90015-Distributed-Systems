@@ -14,11 +14,6 @@ public class ChatRoom {
         this.members = new ArrayList<>();
     }
 
-    public ChatRoom(String roomid) {
-        this.roomid = roomid;
-        this.members = new ArrayList<>();
-    }
-
     public String getRoomid() {
         return roomid;
     }
