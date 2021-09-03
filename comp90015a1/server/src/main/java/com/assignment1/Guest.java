@@ -29,6 +29,10 @@ public class Guest {
         this.currentRoom = currentRoom;
     }
 
+    public ArrayList<String> getOwnership() {
+        return ownership;
+    }
+
     public void addOwnership(String chatRoom){
         this.ownership.add(chatRoom);
     }

@@ -12,8 +12,6 @@ public class ChatRoom {
         this.roomid = roomid;
         this.owner = owner;
         this.members = new ArrayList<>();
-        this.members.add(owner);
-        owner.setCurrentRoom(this.roomid);
     }
 
     public ChatRoom(String roomid) {
