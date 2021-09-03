@@ -6,6 +6,14 @@ import com.assignment1.base.Enum.Command;
 import com.assignment1.base.Enum.MessageType;
 import com.assignment1.base.Message.C2S.IdentityChange;
 import com.assignment1.base.Message.S2C.NewIdentity;
+import com.assignment1.base.Message.S2C.RoomChange;
+
+
+import com.assignment1.base.Message.S2C.NewIdentity;
+import com.assignment1.base.Message.S2C.RoomChange;
+import com.assignment1.base.Message.S2C.RoomContents;
+import com.assignment1.base.Message.S2C.RoomList;
+
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -118,7 +126,36 @@ public class Manager {
     }
 
     private synchronized BroadcastInfo Join(String roomid, Guest g){
-        return null;
+        BroadcastInfo info = new BroadcastInfo();
+
+        RoomChange roomchange = new RoomChange();
+        roomchange.setType(MessageType.ROOMCHANGE.getType());
+        roomchange.setIdentity(g.getIdentity());
+        roomchange.setFormer(g.getCurrentRoom());
+        //已经在要加入的房间或者加入的房间在roomlist里不存在
+        if(g.getCurrentRoom().equals(roomid)|| !this.roomHashMap.containsKey(roomid)){
+            //啥也不变
+
+            roomchange.setRoomid(g.getCurrentRoom());
+            //只对guest 本人发失败消息
+            String fail ="The requested room is invalid or non existent.";
+            info.setContent(JSON.toJSONString(fail));
+            info.addConnection(this.connectionHashMap.get(g));
+        }
+        else{
+            //当前房间删人，目标房间加人
+            this.roomHashMap.get(g.getCurrentRoom()).deleteMember(g);
+            this.roomHashMap.get(roomid).addMember(g);
+            g.setCurrentRoom(roomid);
+            roomchange.setRoomid(roomid);
+            info.setContent(JSON.toJSONString(roomchange));
+            //对目标房间内的人发送
+            ArrayList<Guest> guestsToSend = this.roomHashMap.get(roomid).getMembers();
+            for(int i=0; i< guestsToSend.size();i++){
+                info.addConnection(this.connectionHashMap.get(guestsToSend.get(i)));
+            }
+        }
+        return info;
     }
 
     private synchronized BroadcastInfo List(Guest g){
@@ -126,19 +163,82 @@ public class Manager {
     }
 
     private synchronized BroadcastInfo CreateRoom(String roomid, Guest g){
-        return null;
+        BroadcastInfo info = new BroadcastInfo();
+        String pattern = "^[a-zA-Z][0-9]{3,32}";
+
+        RoomChange createRoom = new RoomChange();
+        createRoom.setType(Command.CREATEROOM.getCommand());
+        createRoom.setRoomid(roomid);
+        //如果房间名符合要求且不存在
+        if(Pattern.matches(pattern, roomid)&&!this.roomHashMap.containsKey(roomid)){
+            ChatRoom newRoom = new ChatRoom(roomid);
+            newRoom.setOwner(g);
+            newRoom.setRoomid(roomid);
+            this.roomList.add(newRoom);
+            this.roomHashMap.put(roomid, newRoom);
+            info.setContent(JSON.toJSONString(createRoom));
+        }
+        else {
+            String fail = "Room "+roomid+" is invalid or already in use";
+            info.setContent(JSON.toJSONString(fail));
+        }
+        info.addConnection(this.connectionHashMap.get(g));
+        return info;
     }
 
     private synchronized BroadcastInfo DeleteRoom(String roomid, Guest g){
-        return null;
+        BroadcastInfo info = new BroadcastInfo();
+        RoomChange deleteRoom = new RoomChange();
+        deleteRoom.setRoomid(roomid);
+        deleteRoom.setType(Command.DELETEROOM.getCommand());
+
+        //roomList中包含要删除的room, 且guest是要删除的room owner
+        if(this.roomHashMap.containsKey(roomid)&&this.roomHashMap.get(roomid).getOwner().equals(g)){
+            this.roomList.remove(this.roomHashMap.get(roomid));
+            this.roomHashMap.remove(roomid);
+            info.setContent(JSON.toJSONString(deleteRoom));
+        }
+        else{
+            String fail = "Room is not exist or you don't have authorization.";
+            info.setContent(JSON.toJSONString(fail));
+
+        }
+        return info;
     }
 
     private synchronized BroadcastInfo Who(String roomid, Guest g){
-        return null;
+        BroadcastInfo info = new BroadcastInfo();
+        RoomContents who = new RoomContents();
+
+        who.setType(MessageType.ROOMCONTENTS.getType());
+        who.setRoomid(roomid);
+        ArrayList<Guest> guestsInRoom = this.roomHashMap.get(g.getCurrentRoom()).getMembers();
+        ArrayList<String> guestsIdentity = new ArrayList<>();
+        //把房间里的guest identity存入 一个string arraylist 然后放入who.setIdentities().
+        for(int i =0; i < guestsInRoom.size();i++){
+            guestsIdentity.add(guestsInRoom.get(i).getIdentity());
+        }
+        who.setIdentities(guestsIdentity);
+        who.setOwner(this.roomHashMap.get(roomid).getOwner().getIdentity());
+        info.setContent(JSON.toJSONString(who));
+
+        return info;
     }
 
     private synchronized BroadcastInfo Quit(Guest g){
-        return null;
+        BroadcastInfo info = new BroadcastInfo();
+        RoomChange quit = new RoomChange();
+        quit.setType(Command.QUIT.getCommand());
+        String announcement = g.getIdentity()+ "left the server.";
+        ArrayList<Guest> guestsToSend = this.roomHashMap.get(g.getCurrentRoom()).getMembers();
+        info.setContent(announcement);
+        for(int i =0; i<guestsToSend.size(); i++){
+            info.addConnection(this.connectionHashMap.get(guestsToSend.get(i)));
+        }
+
+        this.connectionHashMap.remove(g);
+        this.identityList.remove(g.getIdentity());
+        return info;
     }
 
     class BroadcastInfo{
