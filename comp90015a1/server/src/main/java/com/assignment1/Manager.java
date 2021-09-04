@@ -14,6 +14,7 @@ import com.assignment1.base.Message.S2C.RoomList;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.regex.Pattern;
 
 public class Manager {
@@ -127,21 +128,21 @@ public class Manager {
         rc.setType(MessageType.ROOMCHANGE.getType());
         rc.setIdentity(g.getIdentity());
         rc.setFormer(g.getCurrentRoom());
-        //已经在要加入的房间或者加入的房间在roomlist里不存在
+
+
         BroadcastInfo info = new BroadcastInfo();
         if(g.getCurrentRoom().equals(roomid) || !this.roomHashMap.containsKey(roomid)){
-            //啥也不变
+
             rc.setRoomid(g.getCurrentRoom());
-            //只对当前用户发送RoomChange Message
+
             info.addConnection(this.connectionHashMap.get(g));
         }
         else{
-            //当前房间删人，目标房间加人
+
             this.roomHashMap.get(g.getCurrentRoom()).deleteMember(g);
             this.roomHashMap.get(roomid).addMember(g);
             g.setCurrentRoom(roomid);
             rc.setRoomid(roomid);
-            //对目标房间内的人发送声明有人加入
             ArrayList<Guest> guestsToSend = this.roomHashMap.get(roomid).getMembers();
             for(int i=0;i<guestsToSend.size();i++){
                 info.addConnection(this.connectionHashMap.get(guestsToSend.get(i)));
@@ -174,12 +175,11 @@ public class Manager {
     }
 
     private synchronized BroadcastInfo CreateRoom(String roomid, Guest g){
-        String pattern = "[a-zA-Z]{1}[a-zA-Z0-9]{2,31}";
+        String pattern = "^[a-zA-Z]{1}[a-zA-Z0-9]{2,31}";
         RoomList rl = new RoomList();
         rl.setType(MessageType.ROOMLIST.getType());
         BroadcastInfo info = new BroadcastInfo();
         ArrayList<HashMap> rooms = this.getRooms();
-        //如果房间名符合要求且不存在
         if(Pattern.matches(pattern, roomid) && !this.roomHashMap.containsKey(roomid)){
             ChatRoom newRoom = new ChatRoom(roomid, g);
             this.roomList.add(newRoom);
@@ -198,70 +198,70 @@ public class Manager {
 
     private synchronized BroadcastInfo DeleteRoom(String roomid, Guest g){
         BroadcastInfo info = new BroadcastInfo();
-        RoomChange deleteRoom = new RoomChange();
-        deleteRoom.setRoomid(roomid);
-        deleteRoom.setType(Command.DELETEROOM.getCommand());
-        //roomList中包含要删除的room, 且guest是要删除的room owner
+        RoomList rl = new RoomList();
+
+        rl.setType(MessageType.ROOMLIST.getType());
+        ArrayList<HashMap> rooms = this.getRooms();
+
         if(this.roomHashMap.containsKey(roomid)&&this.roomHashMap.get(roomid).getOwner().equals(g)){
-            this.roomList.remove(this.roomHashMap.get(roomid));
             this.roomHashMap.remove(roomid);
-            info.setContent(JSON.toJSONString(deleteRoom));
-            info.addConnection(this.connectionHashMap.get(g));
+            Iterator iter = this.roomList.iterator();
+            while(iter.hasNext()){
+                String roomId = (String) iter.next();
+                if(roomId.equals(roomid)){
+                    iter.remove();
+                }
+            }
+            for(int i=0; i < rooms.size();i++){
+                if( rooms.get(i).containsKey(roomid)){
+                    rooms.remove(i);
+                }
+            }
         }
-        else{
-            info.setContent(JSON.toJSONString(deleteRoom));
-        }
+        rl.setRooms(rooms);
+        info.setContent(JSON.toJSONString(rl));
+        info.addConnection(this.connectionHashMap.get(g));
         return info;
     }
 
     private synchronized BroadcastInfo Who(String roomid, Guest g){
         BroadcastInfo info = new BroadcastInfo();
-        RoomContents who = new RoomContents();
+        RoomContents rc = new RoomContents();
 
-        who.setType(MessageType.ROOMCONTENTS.getType());
-        who.setRoomid(roomid);
+        rc.setType(MessageType.ROOMCONTENTS.getType());
+        rc.setRoomid(roomid);
+
         ArrayList<Guest> guestsInRoom = this.roomHashMap.get(g.getCurrentRoom()).getMembers();
         ArrayList<String> guestsIdentity = new ArrayList<>();
-        //把房间里的所有client identity存入 一个string arraylist 然后放入who.setIdentities().
         for(int i =0; i < guestsInRoom.size();i++){
             guestsIdentity.add(guestsInRoom.get(i).getIdentity());
         }
-        who.setIdentities(guestsIdentity);
-        who.setOwner(this.roomHashMap.get(roomid).getOwner().getIdentity());
-        info.setContent(JSON.toJSONString(who));
+        rc.setIdentities(guestsIdentity);
+        rc.setOwner(this.roomHashMap.get(roomid).getOwner().getIdentity());
+        info.setContent(JSON.toJSONString(rc));
         info.addConnection(this.connectionHashMap.get(g));
-        //如果房间为mainhall, owner应为空 ++
         return info;
     }
 
     private synchronized BroadcastInfo Quit(Guest g){
         BroadcastInfo info = new BroadcastInfo();
-        RoomChange quit = new RoomChange();
-        quit.setType(Command.QUIT.getCommand());
-        info.setContent(JSON.toJSONString(quit));
-
+        RoomChange rc = new RoomChange();
+        rc.setType(MessageType.ROOMCHANGE.getType());
         ArrayList<Guest> guestsToSend = this.roomHashMap.get(g.getCurrentRoom()).getMembers();
-
-
-        //如果退出的用户创建过房间，找到并删除
-        for(String roomid: this.roomHashMap.keySet()){
-            if(g.equals(this.roomHashMap.get(roomid).getOwner())){
-                this.roomList.remove(this.roomHashMap.get(roomid));
-                this.roomHashMap.remove(roomid);
+        //Implement DeleteRoom
+        for(String roomid: this.roomHashMap.keySet()) {
+            if (g.equals(this.roomHashMap.get(roomid).getOwner())) {
+                DeleteRoom(roomid,g);
             }
-            this.identityList.remove(g.getIdentity());
-            this.connectionHashMap.remove(g);
-            this.guestHashMap.remove(g);
-
+        }
+        this.identityList.remove(g.getIdentity());
+        this.connectionHashMap.remove(g);
+        info.setContent(JSON.toJSONString(rc));
         for(int i =0; i<guestsToSend.size(); i++){
             info.addConnection(this.connectionHashMap.get(guestsToSend.get(i)));
         }
-
-        }
-
         return info;
     }
-
     class BroadcastInfo{
 
         private String content;
