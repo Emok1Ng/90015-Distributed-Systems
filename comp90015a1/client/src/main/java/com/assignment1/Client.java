@@ -62,10 +62,8 @@ public class Client {
     public void run() {
       while(true){
         try {
-          if(reader.readLine()!=null){
-            String response = reader.readLine();
-            System.out.format("[Server]> %s\n", response);
-          }
+          String response = reader.readLine();
+          System.out.format("[Server]> %s\n", response);
         }
         catch (IOException e){
           e.printStackTrace();
