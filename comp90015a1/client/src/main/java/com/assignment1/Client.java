@@ -45,7 +45,7 @@ public class Client {
           if (toSend != null) {
             writer.println(toSend);
           } else {
-            System.out.println("[ERROR]Unable to send message due to Invalid Command or Lack of arguments.");
+            System.out.println("[ERROR]Unable to send message due to Invalid command/Lack of arguments/Invalid identity(names begin with 'guest' followed by numbers are preserved) or roomid");
           }
         } catch (IOException e) {
           e.printStackTrace();

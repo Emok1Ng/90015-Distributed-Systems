@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -20,12 +21,15 @@ public class Server {
     server_chat.handle();
   }
 
-  private synchronized void broadCast(Manager.BroadcastInfo info) {
-    String content = info.getContent();
-    System.out.printf("[Server] %s\n", content);
-    for(int i=0;i<info.getConnections().size();i++){
-      System.out.println(info.getConnections().get(i));
-      info.getConnections().get(i).sendMessage(content);
+  private synchronized void broadCast(ArrayList<Manager.BroadcastInfo> infoList) {
+    for(int i=0;i<infoList.size();i++){
+      Manager.BroadcastInfo info = infoList.get(i);
+      String content = info.getContent();
+      //System.out.printf("[Server] %s\n", content);
+      for(int j=0;j<info.getConnections().size();j++){
+        //System.out.println(info.getConnections().get(j));
+        info.getConnections().get(j).sendMessage(content);
+      }
     }
   }
 
@@ -33,9 +37,9 @@ public class Server {
     ServerSocket serverSocket;
     ExecutorService threadpool = Executors.newFixedThreadPool(5);
     try {
-      System.out.println("[Server] Waiting for connection......");
+      System.out.println("[Server]:Waiting for connection......");
       serverSocket = new ServerSocket((port));
-      System.out.printf("[Server] Listening on port %d\n", port);
+      System.out.printf("[Server]:Listening on port %d\n", port);
       alive = true;
       while(alive){
         Socket socket = serverSocket.accept();
@@ -69,8 +73,6 @@ public class Server {
         try{
           String input  = reader.readLine();
           if(input != null){
-            System.out.printf("[Client] :%s",input);
-            System.out.println(this);
             broadCast(manager.Analyze(input,this));
           }
           else{
