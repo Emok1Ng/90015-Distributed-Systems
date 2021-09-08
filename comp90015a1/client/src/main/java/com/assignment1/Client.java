@@ -1,5 +1,8 @@
 package com.assignment1;
 
+import com.alibaba.fastjson.JSONObject;
+import com.assignment1.base.Enum.Command;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -7,8 +10,15 @@ import java.net.Socket;
 import java.io.InputStreamReader;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Client {
+
+  public AtomicInteger status;
+  //1:Creating 2:Deleting 0:others
+  public Client() {
+    status.set(0);
+  }
 
   public static void main(String[] args)throws IOException {
     Client client = new Client();
@@ -29,20 +39,27 @@ public class Client {
   class Sender implements Runnable{
     private PrintWriter writer;
     private BufferedReader keyboard;
-    private InputParser inputParser;
+    private OutputParser outputParser;
+
     public Sender(Socket socket) throws IOException {
       this.writer = new PrintWriter(socket.getOutputStream(), true);
       this.keyboard = new BufferedReader(new InputStreamReader(System.in));
-      this.inputParser = new InputParser();
+      this.outputParser = new OutputParser();
     }
     @Override
     public void run() {
       while (true) {
         try {
           String message = keyboard.readLine();
-          String toSend = inputParser.toJSON(message);
-          System.out.println(toSend);
+          String toSend = outputParser.toJSON(message);
+          //System.out.println(toSend);
           if (toSend != null) {
+            if(JSONObject.parseObject(toSend).get("type").equals(Command.CREATEROOM.getCommand())){
+              status.set(1);
+            }
+            else if(JSONObject.parseObject(toSend).get("type").equals(Command.DELETEROOM.getCommand())){
+              status.set(2);
+            }
             writer.println(toSend);
           } else {
             System.out.println("[ERROR]Unable to send message due to Invalid command/Lack of arguments/Invalid identity(names begin with 'guest' followed by numbers are preserved) or roomid");
@@ -56,14 +73,17 @@ public class Client {
 
   class Receiver implements Runnable{
     private BufferedReader reader;
+    private InputParser inputParser;
     public Receiver(Socket socket) throws IOException {
       this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      this.inputParser = new InputParser();
     }
     public void run() {
       while(true){
         try {
           String response = reader.readLine();
-          System.out.format("[Server]> %s\n", response);
+          inputParser.print(response, status.get());
+          status.set(0);
         }
         catch (IOException e){
           e.printStackTrace();

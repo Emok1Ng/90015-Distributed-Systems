@@ -29,18 +29,18 @@ public class Client2 {
     class Sender implements Runnable{
         private PrintWriter writer;
         private BufferedReader keyboard;
-        private InputParser inputParser;
+        private OutputParser outputParser;
         public Sender(Socket socket) throws IOException {
             this.writer = new PrintWriter(socket.getOutputStream(), true);
             this.keyboard = new BufferedReader(new InputStreamReader(System.in));
-            this.inputParser = new InputParser();
+            this.outputParser = new OutputParser();
         }
         @Override
         public void run() {
             while (true) {
                 try {
                     String message = keyboard.readLine();
-                    String toSend = inputParser.toJSON(message);
+                    String toSend = outputParser.toJSON(message);
                     System.out.println(toSend);
                     if (toSend != null) {
                         writer.println(toSend);
