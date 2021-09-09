@@ -32,11 +32,10 @@ public class OutputParser {
         String roomPattern = "^[a-zA-Z]{1}[a-zA-Z0-9]{2,31}";
         if(command.equals(Command.IDENTITYCHANGE.getCommand()) && parts.length >= 2){
             arg1 = parts[1];
-            if(!Pattern.matches(identityPattern, arg1) &&
+            if(!Pattern.matches(identityPattern, arg1) ||
                     Pattern.matches(defaultIdentityPattern, arg1)){
                 return null;
             }
-            arg1 = parts[1];
             IdentityChange ic = new IdentityChange();
             ic.setType(Command.IDENTITYCHANGE.getCommand());
             ic.setIdentity(arg1);

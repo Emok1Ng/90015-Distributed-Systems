@@ -1,5 +1,8 @@
 package com.assignment1;
 
+import com.alibaba.fastjson.JSONObject;
+import com.assignment1.base.Enum.Command;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -74,16 +77,21 @@ public class Server {
           String input  = reader.readLine();
           if(input != null){
             broadCast(manager.Analyze(input,this));
+            String type = JSONObject.parseObject(input).get("type").toString();
+            if(type.equals(Command.QUIT.getCommand())){
+              connection_alive = false;
+            }
           }
           else{
             connection_alive = false;
           }
-        }catch (IOException e){
-          e.printStackTrace();
+        }catch (Exception e){
+          broadCast(manager.Analyze("{\"type\":\"quit\"}",this));
           connection_alive  = false;
         }
       }
       close();
+      this.close();
     }
 
     public void close() {

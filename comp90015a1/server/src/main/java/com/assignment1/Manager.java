@@ -12,12 +12,12 @@ import java.util.HashMap;
 
 public class Manager {
 
-    private ArrayList<ChatRoom> roomList;
-    private ArrayList<String> identityList;
-    private HashMap<Server.ChatConnection, Guest> guestHashMap;
-    private HashMap<Guest, Server.ChatConnection> connectionHashMap;
-    private HashMap<String, ChatRoom> roomHashMap;
-    private Integer count;
+    private volatile ArrayList<ChatRoom> roomList;
+    private volatile ArrayList<String> identityList;
+    private volatile HashMap<Server.ChatConnection, Guest> guestHashMap;
+    private volatile HashMap<Guest, Server.ChatConnection> connectionHashMap;
+    private volatile HashMap<String, ChatRoom> roomHashMap;
+    private volatile Integer count;
 
     public Manager() {
         this.roomList = new ArrayList<>();
@@ -28,7 +28,7 @@ public class Manager {
         this.connectionHashMap = new HashMap<>();
         this.roomHashMap = new HashMap<>();
         this.roomHashMap.put("MainHall", hall);
-        this.count = 0;
+        this.count = 1;
     }
 
     public ArrayList<BroadcastInfo> Analyze(String s, Server.ChatConnection connection){
@@ -80,12 +80,12 @@ public class Manager {
             else{
                 Message message = new Message();
                 message.setIdentity(this.guestHashMap.get(connection).getIdentity());
-                message.setContent(s);
+                message.setContent(json.get("content").toString());
                 message.setType(MessageType.MESSAGE.getType());
                 System.out.printf("[%s] %s>%s\n",g.getCurrentRoom(),g.getIdentity(),json.get("content"));
                 infoList = new ArrayList<>();
                 BroadcastInfo info = new BroadcastInfo();
-                info.setContent(s);
+                info.setContent(JSON.toJSONString(message));
                 ChatRoom room = this.roomHashMap.get(this.guestHashMap.get(connection).getCurrentRoom());
                 for(int i=0;i<room.getMembers().size();i++){
                     info.addConnection(this.connectionHashMap.get(room.getMembers().get(i)));
@@ -124,7 +124,9 @@ public class Manager {
         ni.setFormer(g.getIdentity());
         BroadcastInfo info = new BroadcastInfo();
         if(!this.identityList.contains(identity)){
+            this.identityList.remove(g.getIdentity());
             g.setIdentity(identity);
+            this.identityList.add(identity);
             ni.setIdentity(identity);
             System.out.printf("%s is now %s\n",ni.getFormer(),ni.getIdentity());
             ArrayList<Guest> guestsToSend = this.roomHashMap.get(g.getCurrentRoom()).getMembers();
@@ -159,7 +161,16 @@ public class Manager {
             ArrayList<Guest> guestsToSendCurrent = this.roomHashMap.get(roomid).getMembers();
             if(!g.getCurrentRoom().equals("")){
                 this.roomHashMap.get(g.getCurrentRoom()).deleteMember(g);
-                guestsToSendFormer = this.roomHashMap.get(g.getCurrentRoom()).getMembers();
+                if(!g.getCurrentRoom().equals("MainHall")){
+                    ChatRoom checkout = this.roomHashMap.get(g.getCurrentRoom());
+                    if(checkout.getMembers().size()==0 && checkout.getOwner()==null){
+                        this.roomList.remove(checkout);
+                        this.roomHashMap.remove(checkout.getRoomid());
+                    }
+                }
+                if(this.roomHashMap.get(g.getCurrentRoom())!=null){
+                    guestsToSendFormer = this.roomHashMap.get(g.getCurrentRoom()).getMembers();
+                }
                 System.out.printf("%s move from %s to %s\n",g.getIdentity(),g.getCurrentRoom(),roomid);
             }
             else{
@@ -364,16 +375,20 @@ public class Manager {
         }
         ArrayList<String> roomids = g.getOwnership();
         for(int i=0;i<roomids.size();i++){
-            this.roomHashMap.get(roomids.get(i)).setOwner(null);
+            ChatRoom room = this.roomHashMap.get(roomids.get(i));
+            room.setOwner(null);
+            if(room.getMembers().size()==0){
+                this.roomList.remove(room);
+                this.roomHashMap.remove(room.getRoomid());
+            }
         }
         this.roomHashMap.get(g.getCurrentRoom()).deleteMember(g);
+        this.identityList.remove(g.getIdentity());
+        this.connectionHashMap.remove(g);
         infoList.add(info);
         return infoList;
     }
 
-    private void CheckRoom(String roomid){
-
-    }
 
     class BroadcastInfo{
 

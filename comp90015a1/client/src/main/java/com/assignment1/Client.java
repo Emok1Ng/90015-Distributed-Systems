@@ -10,14 +10,18 @@ import java.net.Socket;
 import java.io.InputStreamReader;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Client {
 
-  public AtomicInteger status;
+  public volatile int status;
+  public volatile boolean senderAlive;
+  public volatile boolean receiverAlive;
+  public volatile String roomid;
   //1:Creating 2:Deleting 0:others
   public Client() {
-    status.set(0);
+    status = 0;
+    senderAlive = false;
+    receiverAlive = false;
   }
 
   public static void main(String[] args)throws IOException {
@@ -29,11 +33,12 @@ public class Client {
     String remoteHostname = "127.0.0.1";
     int remotePort = 6379;
     Socket socket = new Socket(remoteHostname, remotePort);
-    ExecutorService threadpool = Executors.newFixedThreadPool(5);
+    ExecutorService threadpool = Executors.newFixedThreadPool(2);
     Sender sender = new Sender(socket);
     Receiver receiver = new Receiver(socket);
     threadpool.execute(sender);
     threadpool.execute(receiver);
+    threadpool.shutdown();
   }
 
   class Sender implements Runnable{
@@ -48,23 +53,30 @@ public class Client {
     }
     @Override
     public void run() {
-      while (true) {
+      senderAlive = true;
+      while (senderAlive) {
         try {
           String message = keyboard.readLine();
           String toSend = outputParser.toJSON(message);
           //System.out.println(toSend);
           if (toSend != null) {
             if(JSONObject.parseObject(toSend).get("type").equals(Command.CREATEROOM.getCommand())){
-              status.set(1);
+              status = 1;
+              roomid = JSONObject.parseObject(toSend).get("roomid").toString();
             }
             else if(JSONObject.parseObject(toSend).get("type").equals(Command.DELETEROOM.getCommand())){
-              status.set(2);
+              status = 2;
+              roomid = JSONObject.parseObject(toSend).get("roomid").toString();
+            }
+            else if(JSONObject.parseObject(toSend).get("type").equals(Command.QUIT.getCommand())){
+              senderAlive = false;
             }
             writer.println(toSend);
           } else {
             System.out.println("[ERROR]Unable to send message due to Invalid command/Lack of arguments/Invalid identity(names begin with 'guest' followed by numbers are preserved) or roomid");
           }
         } catch (IOException e) {
+          senderAlive = false;
           e.printStackTrace();
         }
       }
@@ -79,13 +91,16 @@ public class Client {
       this.inputParser = new InputParser();
     }
     public void run() {
-      while(true){
+      receiverAlive = true;
+      while(receiverAlive){
         try {
           String response = reader.readLine();
-          inputParser.print(response, status.get());
-          status.set(0);
+          receiverAlive = inputParser.print(response, status, roomid);
+          roomid = "";
+          status = 0;
         }
         catch (IOException e){
+          receiverAlive = false;
           e.printStackTrace();
         }
       }
