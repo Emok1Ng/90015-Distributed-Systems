@@ -13,26 +13,55 @@ import java.util.concurrent.Executors;
 
 public class Client {
 
+  private int port = 4444;
+  private String hostName;
   public volatile int status;
   public volatile boolean senderAlive;
   public volatile boolean receiverAlive;
   public volatile String roomid;
   //1:Creating 2:Deleting 0:others
-  public Client() {
+  public Client(String hostName) {
+    this.hostName = hostName;
     status = 0;
     senderAlive = false;
     receiverAlive = false;
+    this.port = 4444;
   }
 
-  public static void main(String[] args)throws IOException {
-    Client client = new Client();
-    client.handle();
+  public Client(String hostName, int port) {
+    this.hostName = hostName;
+    status = 0;
+    senderAlive = false;
+    receiverAlive = false;
+    this.port = port;
+  }
+
+  public static void main(String[] args) {
+    Client client;
+    try{
+      if(args.length == 1){
+        client = new Client(args[0]);
+      }
+      else if(args.length == 3 && args[1].equals("-p")){
+        client = new Client(args[0],Integer.parseInt(args[2]));
+      }
+      else{
+        client = new Client("127.0.0.1",4444);
+      }
+    }
+    catch (Exception e){
+      client = new Client("127.0.0.1",4444);
+    }
+    try{
+      client.handle();
+    }
+    catch (Exception e){
+      System.out.println("Cannot connect to server");
+    }
   }
 
   public void handle() throws IOException{
-    String remoteHostname = "127.0.0.1";
-    int remotePort = 6379;
-    Socket socket = new Socket(remoteHostname, remotePort);
+    Socket socket = new Socket(hostName, port);
     ExecutorService threadpool = Executors.newFixedThreadPool(2);
     Sender sender = new Sender(socket);
     Receiver receiver = new Receiver(socket);
@@ -75,9 +104,8 @@ public class Client {
           } else {
             System.out.println("[ERROR]Unable to send message due to Invalid command/Lack of arguments/Invalid identity(names begin with 'guest' followed by numbers are preserved) or roomid");
           }
-        } catch (IOException e) {
+        } catch (Exception e) {
           senderAlive = false;
-          e.printStackTrace();
         }
       }
     }
@@ -99,9 +127,9 @@ public class Client {
           roomid = "";
           status = 0;
         }
-        catch (IOException e){
+        catch (Exception e){
           receiverAlive = false;
-          e.printStackTrace();
+          senderAlive = false;
         }
       }
     }

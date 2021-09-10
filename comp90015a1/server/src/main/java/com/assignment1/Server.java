@@ -15,12 +15,30 @@ import java.util.concurrent.Executors;
 
 public class Server {
 
-  public static final int port = 6379;
+  private int port = 4444;
   private boolean alive;
   private final Manager manager = new Manager();
 
+  public Server(int port) {
+    this.port = port;
+  }
+
+  public Server() {
+  }
+
   public static void main(String[] args) {
-    Server server_chat = new Server();
+    Server server_chat;
+    try{
+      if(args.length==2 && args[0].equals("-p")){
+        server_chat = new Server(Integer.parseInt(args[1]));
+      }
+      else{
+        server_chat = new Server();
+      }
+    }
+    catch (Exception e){
+      server_chat = new Server();
+    }
     server_chat.handle();
   }
 
@@ -38,7 +56,7 @@ public class Server {
 
   public void handle() {
     ServerSocket serverSocket;
-    ExecutorService threadpool = Executors.newFixedThreadPool(5);
+    ExecutorService threadpool = Executors.newFixedThreadPool(10);
     try {
       System.out.println("[Server]:Waiting for connection......");
       serverSocket = new ServerSocket((port));
@@ -50,8 +68,8 @@ public class Server {
         threadpool.execute(connection);
       }
     }
-    catch(IOException e){
-      e.printStackTrace();
+    catch(Exception e){
+      System.out.println("server closed");
     }
   }
 
