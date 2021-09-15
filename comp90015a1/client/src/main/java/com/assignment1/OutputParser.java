@@ -14,7 +14,7 @@ public class OutputParser {
         if(s.isEmpty()){
             return null;
         }
-        else if(s.substring(0,1).equals("#")){
+        else if(s.charAt(0) == '#'){
             toSend = parseToCommand(s.substring(1));
         }
         else{

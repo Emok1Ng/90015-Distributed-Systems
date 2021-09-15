@@ -3,7 +3,6 @@ package com.assignment1;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.assignment1.base.Enum.MessageType;
 
 public class InputParser {
@@ -27,9 +26,13 @@ public class InputParser {
         }
         else if(type.equals(MessageType.ROOMLIST.getType())){
             if(status == 0){
-                String pretty = JSON.toJSONString(json, SerializerFeature.PrettyFormat, SerializerFeature.WriteMapNullValue,
-                        SerializerFeature.WriteDateUseDateFormat);
-                System.out.printf("[LIST]:\n%s\n",pretty);
+                String toPrint = "";
+                JSONArray rooms = (JSONArray) json.get("rooms");
+                for(int i=0;i<rooms.size();i++){
+                    JSONObject room = (JSONObject) rooms.get(i);
+                    toPrint += room.get("roomid").toString() + ": " + room.get("count").toString() + " guests\n";
+                }
+                System.out.print(toPrint);
             }
             else if(status == 1){
                 JSONArray rooms = (JSONArray) json.get("rooms");
@@ -96,9 +99,20 @@ public class InputParser {
             }
         }
         else if(type.equals(MessageType.ROOMCONTENTS.getType())){
-            String pretty = JSON.toJSONString(json, SerializerFeature.PrettyFormat, SerializerFeature.WriteMapNullValue,
-                    SerializerFeature.WriteDateUseDateFormat);
-            System.out.printf("[CONTENT]:\n%s\n",pretty);
+            String toPrint = "";
+            String roomid = json.get("roomid").toString();
+            JSONArray identities = (JSONArray) json.get("identities");
+            if(identities.size() == 0){
+                toPrint = roomid + " is an empty room";
+            }
+            else{
+                toPrint += roomid + " contains";
+                for(int i=0;i<identities.size();i++){
+                    String identity = identities.get(i).toString();
+                    toPrint += " " + identity;
+                }
+            }
+            System.out.println(toPrint);
         }
         return true;
     }

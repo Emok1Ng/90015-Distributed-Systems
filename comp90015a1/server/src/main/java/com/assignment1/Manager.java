@@ -213,7 +213,12 @@ public class Manager {
         ArrayList<Guest> guests = this.roomHashMap.get(roomid).getMembers();
         ArrayList<String> identities = new ArrayList<>();
         for(int i =0;i<guests.size();i++){
-            identities.add(guests.get(i).getIdentity());
+            if(guests.get(i).getOwnership().size() != 0){
+                identities.add(guests.get(i).getIdentity()+"*");
+            }
+            else{
+                identities.add(guests.get(i).getIdentity());
+            }
         }
         rc.setIdentities(identities);
         Guest owner = this.roomHashMap.get(roomid).getOwner();
